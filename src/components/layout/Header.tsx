@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Bell, Search, LogOut, Settings, Menu } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types'
 import Avatar from '@/components/shared/Avatar'
 import NotificationPanel from '@/components/notifications/NotificationPanel'
 import { cn } from '@/lib/utils'
+import { useNotifications } from '@/hooks/useNotifications'
+import { useNotifications } from '@/hooks/useNotifications'
 
 interface HeaderProps {
   profile: Profile | null
@@ -17,7 +18,9 @@ interface HeaderProps {
 export default function Header({ profile, onMenuClick }: HeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [unreadCount] = useState(3) // Will be real-time from Supabase
+  
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(profile?.id)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -75,7 +78,13 @@ export default function Header({ profile, onMenuClick }: HeaderProps) {
           </button>
 
           {notificationsOpen && (
-            <NotificationPanel onClose={() => setNotificationsOpen(false)} />
+            <NotificationPanel 
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onClose={() => setNotificationsOpen(false)} 
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+            />
           )}
         </div>
 

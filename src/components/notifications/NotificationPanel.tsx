@@ -5,46 +5,10 @@ import { formatDate } from '@/lib/utils'
 import { NotificationType } from '@/types'
 import { useEffect, useRef } from 'react'
 
-interface NotificationItem {
-  id: string
-  type: NotificationType
-  title: string
-  body: string | null
-  link: string | null
-  read: boolean
-  created_at: string
-}
-
-// Mock data - will be fetched from Supabase
-const mockNotifications: NotificationItem[] = [
-  {
-    id: '1',
-    type: 'message',
-    title: 'New message in #general',
-    body: 'Ahmed: Hey team, check out the new designs!',
-    link: '/dashboard/chat/1',
-    read: false,
-    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    type: 'task_assigned',
-    title: 'Task assigned to you',
-    body: 'Review the Q4 marketing plan',
-    link: '/dashboard/tasks',
-    read: false,
-    created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    type: 'meeting_invite',
-    title: 'Meeting scheduled',
-    body: 'Weekly sync — Tomorrow at 10:00 AM',
-    link: '/dashboard/meetings',
-    read: true,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-]
+import { NotificationItem } from '@/hooks/useNotifications'
+import { useRouter } from 'next/navigation'
+import { NotificationType } from '@/types'
+import { Bell, Check, MessageSquare, CheckSquare, Video, FileText, AtSign } from 'lucide-react'
 
 const NotificationIcon = ({ type }: { type: NotificationType }) => {
   const icons: Record<NotificationType, React.ReactNode> = {
@@ -60,11 +24,22 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
 }
 
 interface NotificationPanelProps {
+  notifications: NotificationItem[]
+  unreadCount: number
   onClose: () => void
+  onMarkAsRead: (id: string) => Promise<void>
+  onMarkAllAsRead: () => Promise<void>
 }
 
-export default function NotificationPanel({ onClose }: NotificationPanelProps) {
+export default function NotificationPanel({ 
+  notifications, 
+  unreadCount, 
+  onClose, 
+  onMarkAsRead, 
+  onMarkAllAsRead 
+}: NotificationPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -76,6 +51,16 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [onClose])
 
+  const handleNotificationClick = async (notif: NotificationItem) => {
+    if (!notif.read) {
+      await onMarkAsRead(notif.id)
+    }
+    if (notif.link) {
+      router.push(notif.link)
+    }
+    onClose()
+  }
+
   return (
     <div
       ref={panelRef}
@@ -86,34 +71,38 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
         <div className="flex items-center gap-2">
           <Bell className="w-4 h-4 text-purple-400" />
           <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
-          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full gradient-brand text-white">
-            {mockNotifications.filter((n) => !n.read).length}
-          </span>
+          {unreadCount > 0 && (
+            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full gradient-brand text-white">
+              {unreadCount}
+            </span>
+          )}
         </div>
-        <button
-          className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
-          onClick={() => {/* Mark all as read */}}
-        >
-          <Check className="w-3 h-3" />
-          Mark all read
-        </button>
+        {unreadCount > 0 && (
+          <button
+            className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
+            onClick={onMarkAllAsRead}
+          >
+            <Check className="w-3 h-3" />
+            Mark all read
+          </button>
+        )}
       </div>
 
       {/* Notifications list */}
       <div className="max-h-80 overflow-y-auto">
-        {mockNotifications.length === 0 ? (
+        {notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Bell className="w-8 h-8 mb-2 opacity-30" />
             <p className="text-sm">No notifications</p>
           </div>
         ) : (
-          mockNotifications.map((notif) => (
+          notifications.map((notif) => (
             <button
               key={notif.id}
               className={`w-full flex items-start gap-3 p-4 hover:bg-white/5 transition-colors border-b border-border/50 last:border-0 text-left ${
                 !notif.read ? 'bg-purple-500/5' : ''
               }`}
-              onClick={onClose}
+              onClick={() => handleNotificationClick(notif)}
             >
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                 !notif.read ? 'bg-purple-500/20' : 'bg-muted/50'
