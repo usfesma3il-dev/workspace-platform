@@ -83,6 +83,33 @@ export default function ChatWindow({ channelId, channelName, currentUser }: Chat
     }
   }, [channelId, supabase])
 
+  // Re-fetch when tab becomes visible (fixes mobile background sleep issue)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const fetchMessages = async () => {
+          const { data } = await supabase
+            .from('messages')
+            .select('*, sender:profiles(*)')
+            .eq('channel_id', channelId)
+            .order('created_at', { ascending: true })
+            .limit(50)
+
+          if (data) {
+            setMessages(data as (Message & { sender: Profile })[])
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+            }, 100)
+          }
+        }
+        fetchMessages()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [channelId, supabase])
+
   // Scroll on new messages
   useEffect(() => {
     scrollToBottom()
